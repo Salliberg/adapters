@@ -14,7 +14,7 @@ Changed (upstream bugs, see README "Notes & Caveats"):
   a flat or nested value, and a fence with or without the ``json`` tag.
 
 The judge model is any LiteLLM model string, set with JUDGE_MODEL
-(for example ``openai/gpt-5-mini`` or ``anthropic/claude-haiku-4-5``).
+(default ``openai/gpt-5.4``, the judge used for parity).
 
 T1 ground truth comes from t1_ground_truth.py: the dated snapshot embedded in
 the task when it is from today (UTC), otherwise a live AkShare fetch, as in
@@ -37,7 +37,7 @@ ANSWER_FILE = Path("/app/answer.md")
 REWARD_FILE = Path("/logs/verifier/reward.txt")
 DETAIL_FILE = Path("/logs/verifier/judge.json")
 
-DEFAULT_JUDGE_MODEL = "openai/gpt-5-mini"
+DEFAULT_JUDGE_MODEL = "openai/gpt-5.4"
 MAX_TOKENS = 2048
 MAX_ATTEMPTS = 3
 SCORE_KEYS = ("answer_score", "score")

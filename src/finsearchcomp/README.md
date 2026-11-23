@@ -21,7 +21,7 @@ FinSearchComp (ByteDance Seed and Columbia Business School, [arXiv:2509.13160](h
 - Loads the pinned upstream JSON files (download, or `--data-file` / `--akshare-data-file`) and verifies their sha256.
 - One task per question; stable task names derived from upstream `prompt_id`. T1 names add the market (`-greater-china` / `-global`), because the two T1 sets reuse the same prompt ids.
 - The agent receives the upstream question unchanged plus a short note on where to write the reply (`/app/answer.md`), and has web access.
-- `tests/judge.py` reproduces upstream `eval.py`: same per-question judge system prompt and template, same message layout, `max_tokens=2048`, 3 attempts on API errors. The judge is called through LiteLLM, so `JUDGE_MODEL` takes any provider/model string (default `openai/gpt-5-mini`). Writes the reply's score to `/logs/verifier/reward.txt` and the full judge output to `/logs/verifier/judge.json`.
+- `tests/judge.py` reproduces upstream `eval.py`: same per-question judge system prompt and template, same message layout, `max_tokens=2048`, 3 attempts on API errors. The judge is called through LiteLLM, so `JUDGE_MODEL` takes any provider/model string (default `openai/gpt-5.4`, the parity judge). Writes the reply's score to `/logs/verifier/reward.txt` and the full judge output to `/logs/verifier/judge.json`.
 - Oracle (`solution/solve.sh`) writes the upstream reference answer as the reply (T2/T3), or the snapshot quote (T1). The verifier recognises that text and scores it 1 without calling the judge (same approach as the deepresearch-bench adapter).
 - **T1 ground truth: dated snapshot with live fallback.** Upstream builds the T1 ground truth at grading time from AkShare market tables and refreshes them when they are not from the current day. The adapter keeps that rule:
   - With `--t1-snapshot-dir`, each T1 task embeds the upstream ground truth from that snapshot. The date is labelled in `task.toml` (`[metadata] t1_snapshot_date`, `t1_snapshot_fetched_at`, UTC) and in `tests/task_data.json`.
@@ -56,7 +56,7 @@ finsearchcomp/
 Pending registry publication. Local runs:
 
 ```bash
-export JUDGE_MODEL=openai/gpt-5-mini       # any LiteLLM model string
+export JUDGE_MODEL=openai/gpt-5.4          # any LiteLLM model string
 export OPENAI_API_KEY=...                  # or ANTHROPIC_API_KEY for anthropic/... judges
 harbor run -c src/finsearchcomp/run_finsearchcomp.yaml          # oracle
 harbor run -p datasets/finsearchcomp -a <agent> -m <model>
@@ -83,7 +83,24 @@ Keep the snapshot directory outside the dataset directory: Harbor treats every s
 
 ## Comparison with Original Benchmark (Parity)
 
-Pending.
+| Agent | Model | Metric | Runs | Dataset Size | Original (mean ± SEM) | Harbor (mean ± SEM) |
+|-------|-------|--------|------|--------------|-----------------------|---------------------|
+| claude-code@2.1.329 | claude-haiku-5-5 | accuracy | 3 | 33 (5.6% of 593) | 0.495 ± 0.036 | 0.525 ± 0.020 |
+
+Per-run accuracy: original 0.545, 0.515, 0.424; Harbor 0.545, 0.485, 0.545. The run ranges overlap.
+
+Both sides run the same agent version, model, container limits and instruction, and use the same judge prompt with `gpt-5.4`. The original side is the upstream repository with the minimal grading fixes and a small agent runner (`parity/run_agent.py`), in [Salliberg/FinSearchComp](https://github.com/Salliberg/FinSearchComp).
+
+Reproduce on the Harbor side:
+
+```bash
+harbor run -p datasets/finsearchcomp -a claude-code -m anthropic/claude-haiku-5-5 \
+  $(grep -v '^t1-' src/finsearchcomp/parity_task_ids.txt | sed 's/^/-i /')
+```
+
+Reproduce on the original side: see `parity/README.md` in the fork.
+
+**Scope: T2 and T3 only.** `parity_task_ids.txt` lists 50 tasks (T1 17, T2 19, T3 14). Parity uses the 33 T2/T3 tasks. The 17 T1 tasks are left out because no same-day AkShare snapshot could be fetched during the parity window. T1 tasks are still generated and graded the same way.
 
 ## Notes & Caveats
 
